@@ -1,0 +1,2485 @@
+#+TITLE:              Emacs konfigurace v org
+#+STARTUP:            indent content
+#+SETUPFILE:          theme-bigblow.setup
+
+#+BEGIN_EXPORT ascii
+|
+|                   o                   o-o          
+|                   |                   | 
+|              o-o  |  oo  o-o o-o     -O- o-o o-o   
+|              |  | | | | |    |-'      |  | | |     
+|              O-o  o o-o- o-o o-o      o  o-o o      my settings  
+|              |                                      version 7           
+|              o                                      august
+|                                                     2018
+|                                            
+|     
+|              Always tangle with C-c C-v t  |
+|                                            |  -> into dm-init.el 
+|                        init.el is symlink  |
+|
+#+END_EXPORT
+
+* 1 Tuning, Settings, Special Functions, Basics
+** Set the start time for measuring startup time.
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defconst emacs-start-time (current-time))
+#+END_SRC
+** require package, paths, etc.
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (require 'package)
+  (setq package-archives '(("org"          . "http://orgmode.org/elpa/")
+                           ("gnu"          . "http://elpa.gnu.org/packages/")
+                           ("melpa"        . "http://melpa.milkbox.net/packages/")
+                           ("melpa-stable" . "https://stable.melpa.org/packages/") 
+                           ("marmalade"    . "http://marmalade-repo.org/packages/")))
+  (package-initialize)
+
+  ;; keep the installed packages in .emacs.d
+  (setq package-user-dir (expand-file-name "elpa" user-emacs-directory))
+  (package-initialize)
+  ;; update the package metadata is the local cache is missing
+  (unless package-archive-contents
+    (package-refresh-contents))
+
+  ;; skipped >>>
+  (setq user-full-name "david marek"
+        user-mail-address "private.marek@me.com")
+
+  ;; Always load newest byte code
+  (setq load-prefer-newer t)
+
+  ;; reduce the frequency of garbage collection by making it happen on
+  ;; each 50MB of allocated data (the default is on every 0.76MB)
+  (setq gc-cons-threshold 50000000)
+
+  ;; warn when opening files bigger than 100MB
+  (setq large-file-warning-threshold 100000000)
+
+
+  (defconst david-savefile-dir (expand-file-name "savefile" user-emacs-directory))
+
+  ;; create the savefile dir if it doesn't exist
+  (unless (file-exists-p david-savefile-dir)
+    (make-directory david-savefile-dir))
+  ;; skipped <<<
+
+
+  #+END_SRC
+** benchmark-init
+to measure startup time
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package benchmark-init
+  :ensure t
+  :config
+  ;; To disable collection of benchmark data after init is done.
+  (add-hook 'after-init-hook 'benchmark-init/deactivate))
+#+END_SRC
+
+** cursor, sound, scroll y-or-n
+#+BEGIN_SRC emacs-lisp :tangle yes
+  ;; the blinking cursor is nothing, but an annoyance
+  (blink-cursor-mode -1)
+
+  ;; disable the annoying bell ring
+  (setq ring-bell-function 'ignore)
+
+  ;; disable startup screen
+   (setq inhibit-startup-screen t)
+
+  ;; nice scrolling
+  (setq scroll-margin 0
+        scroll-conservatively 100000
+        scroll-preserve-screen-position 1)
+
+  ;; mode line settings
+  (line-number-mode t)
+  (column-number-mode t)
+  (size-indication-mode t)
+
+  ;; enable y/n answers
+  (fset 'yes-or-no-p 'y-or-n-p)
+
+  ;; skipped >>>
+  ;; more useful frame title, that show either a file or a
+  ;; buffer name (if the buffer isn't visiting a file)
+  (setq frame-title-format
+        '((:eval (if (buffer-file-name)
+                     (abbreviate-file-name (buffer-file-name))
+                   "%b"))))
+
+  ;; Newline at end of file
+  (setq require-final-newline t)
+  ;; skipped <<<
+
+  ;; Emacs modes typically provide a standard means to change the
+  ;; indentation width -- eg. c-basic-offset: use that to adjust your
+  ;; personal indentation width, while maintaining the style (and
+  ;; meaning) of any files you load.
+  (setq-default indent-tabs-mode nil)   ;; don't use tabs to indent
+  (setq-default tab-width 8)            ;; but maintain correct appearance
+
+  ;; delete the selection with a keypress
+  (delete-selection-mode t)
+
+#+END_SRC
+** custom set variables
+#+BEGIN_SRC emacs-lisp  :tangle yes
+    ;; no menu, no scroll bar, Input font etc.
+      (custom-set-variables
+       '(display-battery-mode t)
+       '(doc-view-continuous t)
+       '(markdown-command "/usr/local/Cellar/markdown/1.0.1/bin/markdown")
+       '(menu-bar-mode t)
+       '(ob-translate:default-dest "cz")
+       '(ob-translate:default-src "en")
+       '(org-agenda-files (quote ("~/doc/osx-cal.org" "~/doc/ag.org" "~/~"))) 
+       '(paradox-github-token t)
+       '(scroll-bar-mode nil)
+       '(tool-bar-mode nil))
+#+END_SRC
+
+** TeX, where to find files
+#+BEGIN_SRC emacs-lisp :tangle yes
+;; compile TeX from shell -- M-!
+(setenv "PATH" (concat (getenv "PATH") ":~/scripts/"))
+(setenv "PATH" (concat (getenv "PATH") ":/usr/local/texlive/2016/bin/x86_64-darwin/"))
+#+END_SRC
+** speed-commands -- just press ? on section start
+#+BEGIN_SRC emacs-lisp :tangle yes
+(setq org-use-speed-commands t)
+#+END_SRC
+
+*** Built-in Speed commands
+=======================
+
+Outline Navigation
+------------------
+n   (org-speed-move-safe (quote org-next-visible-heading))
+p   (org-speed-move-safe (quote org-previous-visible-heading))
+f   (org-speed-move-safe (quote org-forward-heading-same-level))
+b   (org-speed-move-safe (quote org-backward-heading-same-level))
+F   org-next-block
+B   org-previous-block
+u   (org-speed-move-safe (quote outline-up-heading))
+j   org-goto
+g   (org-refile t)
+
+Outline Visibility
+------------------
+c   org-cycle
+C   org-shifttab
+    org-display-outline-path
+s   org-narrow-to-subtree
+=   org-columns
+
+Outline Structure Editing
+-------------------------
+U   org-metaup
+D   org-metadown
+r   org-metaright
+l   org-metaleft
+R   org-shiftmetaright
+L   org-shiftmetaleft
+i   (progn (forward-char 1) (call-interactively (quote org-insert-heading-respect-content)))
+^   org-sort
+w   org-refile
+a   org-archive-subtree-default-with-confirmation
+@   org-mark-subtree
+#   org-toggle-comment
+
+Clock Commands
+--------------
+I   org-clock-in
+O   org-clock-out
+
+Meta Data Editing
+-----------------
+t   org-todo
+,   (org-priority)
+0   (org-priority 32)
+1   (org-priority 65)
+2   (org-priority 66)
+3   (org-priority 67)
+:   org-set-tags-command
+e   org-set-effort
+E   org-inc-effort
+W   (lambda (m) (interactive "sMinutes before warning: ") (org-entry-put (point) "APPT_WARNTIME" m))
+
+Agenda Views etc
+----------------
+v   org-agenda
+/   org-sparse-tree
+
+Misc
+----
+o   org-open-at-point
+?   org-speed-command-help
+<   (org-agenda-set-restriction-lock (quote subtree))
+>   (org-agenda-remove-restriction-lock)
+
+** use-package
+#+BEGIN_SRC emacs-lisp :tangle yes
+  ;; This is only needed once, near the top of the file
+  (eval-when-compile
+    ;; Following line is not needed if use-package.el is in ~/.emacs.d
+    (add-to-list 'load-path "~/.emacs.d/elpa/use-package-20180715.1801")
+    (require 'use-package))
+
+#+END_SRC
+** bind-key
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package bind-key)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :tangle no
+(require 'bind-key)
+#+END_SRC
+
+** helm M-x
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "M-x" 'helm-M-x)
+(helm-mode 1)
+#+END_SRC
+
+** org-agenda C-c a
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "C-c a" 'org-agenda)
+#+END_SRC
+
+** org-iswitchb C-c b
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "C-c b" 'org-iswitchb)
+#+END_SRC
+
+** buffer list -- helm-buffers-list C-x b
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "C-x b" 'helm-buffers-list)
+#+END_SRC
+
+** browse kill ring M-y
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "M-y" 'browse-kill-ring)
+#+END_SRC
+
+* 2 Display options
+for quick change hit =C-x C-e= here:
+
+(set-frame-font "Input-16" nil t)
+(set-frame-font "Mononoki-17" nil t)
+(set-frame-font "DejaVu Sans Mono-16" nil t)
+(set-frame-font "Comenia Script A-22" nil t)
+(set-frame-font "Inconsolata-19" nil t)
+
+žluťoučký
+
+** set the default font to Input 
+#+BEGIN_SRC emacs-lisp :tangle no
+(setq default-frame-alist '((font . "Input-15")))
+#+END_SRC
+
+** set the default font to DejaVu Sans Mono
+#+BEGIN_SRC emacs-lisp :tangle no
+(setq default-frame-alist '((font . "Deja Vu Sans Mono-15")))
+#+END_SRC
+
+** auto insert/expand in org-mode, expand #+begin_src etc.
+<s + TAB
+plus other options e,q,v,c,l,L,h,a,A,i,L
+** scrolling the page when 4 lines from edge
+#+BEGIN_SRC emacs-lisp :tangle yes
+(setq scroll-margin 5)
+#+END_SRC
+
+** no tool bar and menu bar
+#+BEGIN_SRC emacs-lisp :tangle yes
+(tool-bar-mode 0)
+#+END_SRC
+
+(menu-bar-mode 0)
+
+** org-bullets, nice bullets for org-mode
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package org-bullets
+  :config
+  (add-hook 'org-mode-hook 'org-bullets-mode))
+#+END_SRC
+
+** theme +  smart mode line (sml)
+
+**** Disable question about theme loading
+ #+BEGIN_SRC emacs-lisp :tangle yes
+ (setq custom-safe-themes t)
+ #+END_SRC
+**** ACTIVE theme, just check y-or-n
+currently active theme loaded on startup
+
+***** leuven 
+a
+#+BEGIN_SRC emacs-lisp :tangle yes
+(load-theme 'leuven)
+#+END_SRC
+
+****** TODO find and install leuven dark theme
+
+**** other themes
+***** monokai
+#+BEGIN_SRC emacs-lisp :tangle no
+(load-theme 'monokai)
+#+END_SRC
+
+***** greiner theme
+      #+BEGIN_SRC emacs-lisp :tangle no
+        ;;(require 'greiner-theme)
+        (load-theme 'greiner)
+      #+END_SRC
+
+ #+BEGIN_SRC emacs-lisp :tangle no
+   ;;(require 'avk-darkblue-yellow-theme)    
+   (load-theme 'avk-daylight t)
+ #+END_SRC
+
+***** abyss 
+#+BEGIN_SRC emacs-lisp :tangle no
+(load-theme 'abyss)
+#+END_SRC
+***** gruvbox theme
+ #+BEGIN_SRC emacs-lisp :tangle no
+   (use-package gruvbox-theme
+     :defer t
+     :config
+     (load-theme 'gruvbox t))
+ #+END_SRC
+***** github modern
+#+BEGIN_SRC emacs-lisp :tangle no
+(load-theme 'github-modern)
+#+END_SRC
+
+***** zweilight
+#+BEGIN_SRC emacs-lisp :tangle no
+(load-theme 'zweilight)
+#+END_SRC
+
+***** solarizedinc
+ #+BEGIN_SRC emacs-lisp :tangle no
+    (load-theme 'sanityinc-solarized-dark)
+ #+END_SRC
+
+***** ample zen theme
+ #+BEGIN_SRC emacs-lisp :tangle no
+   (use-package ample-zen-theme
+     :defer t
+     :config
+     (load-theme 'ample-zen t))
+ #+END_SRC
+
+***** subatomic theme
+ #+BEGIN_SRC emacs-lisp :tangle no
+   (use-package subatomic-theme
+     :defer t
+     :config
+     (load-theme 'subatomic t))
+ #+END_SRC
+***** zenburn theme
+ #+BEGIN_SRC emacs-lisp :tangle no
+   (use-package zenburn-theme
+     :defer t
+     :config
+     (load-theme 'zenburn t))
+ #+END_SRC
+t
+***** solarized theme
+ #+BEGIN_SRC emacs-lisp :tangle no
+   (load-theme 'solarized-dark t)
+ #+END_SRC
+**** and smart mode line setup
+ #+BEGIN_SRC emacs-lisp :tangle no
+   ;; smart mode line
+   (use-package smart-mode-line
+     :config
+       ;; minor modes no show
+    (setq rm-blacklist ".*")
+    (sml/setup t)
+    (load-theme 'smart-mode-line-dark))
+ #+END_SRC
+
+**** more themes examples
+   Here are some themes that are my favorites.
+   And just one of them can be used below.
+   But currently I use solarized.
+
+   - atom dark
+   ;;  atom dark theme
+   (use-package atom-dark-theme
+     :defer t
+     :config
+     (load-theme 'atom-dark t))
+
+   - ample zen
+   ;;  ample zen theme
+   (use-package ample-zen-theme
+     :defer t
+     :config
+     (load-theme 'ample-zen t))
+
+   - gruvbox
+   ;;  gruvbox theme
+   (use-package gruvbox-theme
+      :defer t
+      :config
+      (load-theme 'gruvbox t))
+***** change highlight colour
+   #+BEGIN_SRC emacs-lisp :tangle yes
+   (setq whitespace-line-column 99999)
+   #+END_SRC
+
+***** highlight current line
+#+BEGIN_SRC emacs-lisp :tangle yes
+   (global-hl-line-mode 1)
+#+END_SRC
+
+#+RESULTS:
+: t
+
+
+***** to have nice end of lines's
+   #+BEGIN_SRC emacs-lisp :tangle yes
+   (global-visual-line-mode t)
+   #+END_SRC
+** custom set faces - dm-nice-font
+ #+BEGIN_SRC emacs-lisp :tangle yes
+   (defun dm-nice-font()
+     "tohle mi nastaví font mononoki s barvičkama."
+     (interactive)
+     (custom-set-faces
+      (set-frame-font "Mononoki-17" nil t)))
+   ;; '(default ((t (:height 190 :family "mononoki"))))))
+
+ #+END_SRC
+
+ #+BEGIN_SRC emacs-lisp :tangle no
+   (defun dm-nice-font()
+     "tohle mi nastaví font mononoki s barvičkama."
+     (interactive)
+     (custom-set-faces
+      ;; '(default ((t (:background "gray77" :height 160 :family "mononoki"))))
+      '(default ((t (:height 160 :family "mononoki"))))
+      ;; '(fringe ((t (:background "gray77"))))
+      '(helm-selection ((t (:background "orange1"))))
+      '(diary ((t (:foreground "royal blue" :weight bold))))
+      '(font-lock-variable-name-face ((t (:foreground "orange2" :weight bold :slant italic))))
+      '(org-tag-faces ((t (:foreground "white" :backgroud "orange1"))))))
+ #+END_SRC
+** two font sizes plus huge -- dm-a, dm-s, dm-d
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-a()
+    "put font size to normal."
+    (interactive)
+    (set-frame-font "Mononoki-17" nil t)
+    )
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-s()
+    "put font size to large."
+    (interactive)
+    (set-frame-font "Mononoki-19" nil t)
+    )
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-d()
+    "put font size to huge."
+    (interactive)
+    (set-frame-font "Mononoki-22" nil t)
+    )
+#+END_SRC
+
+** put fringe to the same colour as backgroud
+
+So, fringe is nice actually, I set it to the same color as the background
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-set-fringe-background ()
+    "Set the fringe background to the same color as the regular background."
+    (interactive)
+    (setq dm-fringe-background-color
+          (face-background 'default))
+    (custom-set-faces
+     `(fringe ((t (:background ,dm-fringe-background-color))))))
+
+  (add-hook 'after-init-hook #'dm-set-fringe-background)
+
+  ;; Indicate where a buffer stars and stops
+  (setq-default indicate-buffer-boundaries 'right)
+#+END_SRC
+
+
+** my function to define grey theme =M-x dm-grey=
+shall be called manually, after all themes were disabled.
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-grey ()
+    "This function loads a theme grom external file, 
+  jedit-grey-theme.el."
+    (interactive)
+    (load-theme 'jedit-grey)
+    (dm-set-fringe-background))
+#+END_SRC
+
+** activate my functions
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-all()
+    "Activates dm-functions, like nice font, grey scheme and
+  smart mode line theme."
+  (interactive)
+  ;;(dm-grey)
+  (dm-nice-font)
+  ;; (sml/setup)
+  ;;(sml/apply-theme 'dark)
+  (golden-ratio-mode 1))
+
+
+  (dm-all)
+
+
+
+#+END_SRC
+
+* 3 Keyboard shortcuts
+
+** toggle between most recent buffers
+http://www.emacswiki.org/emacs/SwitchingBuffers#toc5
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-switch-to-previous-buffer ()
+    "Switch to most recent buffer. Repeated calls toggle back and
+    forth between the most recent two buffers."
+    (interactive)
+    (switch-to-buffer (other-buffer (current-buffer) 1)))
+  ;; set key binding
+  (bind-key (kbd "C-§") 'dm-switch-to-previous-buffer)
+#+END_SRC
+
+** org-mode shortcut F9
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key [f9] 'org-mode)
+#+END_SRC
+** switch to buffer, ibuffer "M-§"
+C-x 4 b -- ivy-switch-buffer-other-window
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (bind-key "C-`" 'ibuffer)
+#+END_SRC
+
+** quick jump btw visible buffers, 
+i do not use this, ibuffer is better
+now i test it again
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (global-set-key (kbd "M-§") 'helm-buffers-list)
+#+END_SRC
+
+* 4 tested but not sorted
+
+** writeroom mode, C-c w
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package writeroom
+   :bind ("C-c w" . writeroom-mode))
+#+END_SRC
+
+
+** Smartparens mode
+
+#+begin_src emacs-lisp :tangle yes
+  (use-package smartparens
+    :config
+    (progn
+      (require 'smartparens-config)
+      (add-hook 'emacs-lisp-mode-hook 'smartparens-mode)
+      (add-hook 'emacs-lisp-mode-hook 'show-smartparens-mode)
+      (add-hook 'org-mode-hook 'smartparens-mode)
+      (add-hook 'org-mode-hook 'show-smartparens-mode)))
+#+end_src
+
+inspiration from Sacha, maybe use later
+#+BEGIN_EXAMPLE
+  (use-package smartparens
+    :config
+    (progn
+      (require 'smartparens-config)
+      (add-hook 'emacs-lisp-mode-hook 'smartparens-mode)
+      (add-hook 'emacs-lisp-mode-hook 'show-smartparens-mode)
+  ;;;;;;;;;;;;;;;;;;;;;;;;
+      ;; keybinding management
+
+      (define-key sp-keymap (kbd "C-c s r n") 'sp-narrow-to-sexp)
+      (define-key sp-keymap (kbd "C-M-f") 'sp-forward-sexp)
+      (define-key sp-keymap (kbd "C-M-b") 'sp-backward-sexp)
+      (define-key sp-keymap (kbd "C-M-d") 'sp-down-sexp)
+      (define-key sp-keymap (kbd "C-M-a") 'sp-backward-down-sexp)
+      (define-key sp-keymap (kbd "C-S-a") 'sp-beginning-of-sexp)
+      (define-key sp-keymap (kbd "C-S-d") 'sp-end-of-sexp)
+
+      (define-key sp-keymap (kbd "C-M-e") 'sp-up-sexp)
+      (define-key emacs-lisp-mode-map (kbd ")") 'sp-up-sexp)
+      (define-key sp-keymap (kbd "C-M-u") 'sp-backward-up-sexp)
+      (define-key sp-keymap (kbd "C-M-t") 'sp-transpose-sexp)
+
+      (define-key sp-keymap (kbd "C-M-n") 'sp-next-sexp)
+      (define-key sp-keymap (kbd "C-M-p") 'sp-previous-sexp)
+
+      (define-key sp-keymap (kbd "C-M-k") 'sp-kill-sexp)
+      (define-key sp-keymap (kbd "C-M-w") 'sp-copy-sexp)
+
+      (define-key sp-keymap (kbd "M-<delete>") 'sp-unwrap-sexp)
+      (define-key sp-keymap (kbd "M-<backspace>") 'sp-backward-unwrap-sexp)
+
+      (define-key sp-keymap (kbd "C-<right>") 'sp-forward-slurp-sexp)
+      (define-key sp-keymap (kbd "C-<left>") 'sp-forward-barf-sexp)
+      (define-key sp-keymap (kbd "C-M-<left>") 'sp-backward-slurp-sexp)
+      (define-key sp-keymap (kbd "C-M-<right>") 'sp-backward-barf-sexp)
+
+      (define-key sp-keymap (kbd "M-D") 'sp-splice-sexp)
+      (define-key sp-keymap (kbd "C-M-<delete>") 'sp-splice-sexp-killing-forward)
+      (define-key sp-keymap (kbd "C-M-<backspace>") 'sp-splice-sexp-killing-backward)
+      (define-key sp-keymap (kbd "C-S-<backspace>") 'sp-splice-sexp-killing-around)
+
+      (define-key sp-keymap (kbd "C-]") 'sp-select-next-thing-exchange)
+      (define-key sp-keymap (kbd "C-<left_bracket>") 'sp-select-previous-thing)
+      (define-key sp-keymap (kbd "C-M-]") 'sp-select-next-thing)
+
+      (define-key sp-keymap (kbd "M-F") 'sp-forward-symbol)
+      (define-key sp-keymap (kbd "M-B") 'sp-backward-symbol)
+
+      (define-key sp-keymap (kbd "C-c s t") 'sp-prefix-tag-object)
+      (define-key sp-keymap (kbd "C-c s p") 'sp-prefix-pair-object)
+      (define-key sp-keymap (kbd "C-c s c") 'sp-convolute-sexp)
+      (define-key sp-keymap (kbd "C-c s a") 'sp-absorb-sexp)
+      (define-key sp-keymap (kbd "C-c s e") 'sp-emit-sexp)
+      (define-key sp-keymap (kbd "C-c s p") 'sp-add-to-previous-sexp)
+      (define-key sp-keymap (kbd "C-c s n") 'sp-add-to-next-sexp)
+      (define-key sp-keymap (kbd "C-c s j") 'sp-join-sexp)
+      (define-key sp-keymap (kbd "C-c s s") 'sp-split-sexp)
+
+  ;;;;;;;;;;;;;;;;;;
+      ;; pair management
+
+      (sp-local-pair 'minibuffer-inactive-mode "'" nil :actions nil)
+      (sp-local-pair 'web-mode "<" nil :when '(my/sp-web-mode-is-code-context))
+
+  ;;; markdown-mode
+      (sp-with-modes '(markdown-mode gfm-mode rst-mode)
+        (sp-local-pair "*" "*" :bind "C-*")
+        (sp-local-tag "2" "**" "**")
+        (sp-local-tag "s" "```scheme" "```")
+        (sp-local-tag "<"  "<_>" "</_>" :transform 'sp-match-sgml-tags))
+
+  ;;; tex-mode latex-mode
+      (sp-with-modes '(tex-mode plain-tex-mode latex-mode)
+        (sp-local-tag "i" "1d5f8e69396c521f645375107197ea4dfbc7b792quot;<" "1d5f8e69396c521f645375107197ea4dfbc7b792quot;>"))
+
+  ;;; html-mode
+      (sp-with-modes '(html-mode sgml-mode web-mode)
+        (sp-local-pair "<" ">"))
+
+  ;;; lisp modes
+      (sp-with-modes sp--lisp-modes
+        (sp-local-pair "(" nil :bind "C-("))))
+#+END_EXAMPLE
+** czech holidays
+Add a call to `(czech-holidays-add)` somewhere in your `.emacs`.
+Note that this must be called *before* Emacs calendar is loaded.
+
+** Set how and where to put TO-DOs
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq org-default-todos-file "~/dropbox/org/iphone.org")
+  (setq org-default-notes-file "~/doc/ag.org")
+  (setq org-capture-templates
+        '(("t" "Todo" entry (file org-default-todos-file)
+           "* TODO %?\n %i") ;;\n %a")
+          ("p" "poznámka" entry (file+headline org-default-notes-file "/Inbox/")
+           "* %?\nZe dne %U\n")
+          ("j" "Journal" entry (file+headline org-default-notes-file "/Inbox/")
+           "*** %(format-time-string \"<%Y-%m-%d>\")\n    %?")))
+  (add-to-list 'org-capture-templates
+               '("c" "Contacts" entry (file "~/Org/contacts.org")
+                 "* %(org-contacts-template-name)
+  :PROPERTIES:
+  :EMAIL: %(org-contacts-template-email)
+  :END:"))
+  (bind-key "C-c c" 'org-capture)
+
+#+END_SRC
+
+** evil mode
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package evil
+  :config
+  (evil-mode 0))
+#+END_SRC
+
+** Undo tree mode - visualize your undos and branches
+
+People often struggle with the Emacs undo model, where there's really
+no concept of "redo" - you simply undo the undo.
+#
+This lets you use =C-x u= (=undo-tree-visualize=) to visually walk
+through the changes you've made, undo back to a certain point (or
+redo), and go down different branches.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package undo-tree
+  :diminish undo-tree-mode
+  :config
+  (progn
+    (global-undo-tree-mode)
+    (setq undo-tree-visualizer-timestamps t)
+    (setq undo-tree-visualizer-diff t)))
+#+END_SRC
+
+** pokus o nastavení statusu TODO
+(setq org-todo-keyword-faces
+     '(
+       ("zajímavý" . (:foreground "blue" :weight "bold"))
+       ("nuda" . (:foreground "white" :weight "normal"))
+       ("konec" . (:foreground "white" :weight "bold"))
+       ))
+
+(setq org-todo-keywords
+      '((sequence "zajímavý" "nuda" "nic moc" "|" "DONE")))
+
+** calfw, calendar
+#+BEGIN_SRC emacs-lisp :tangle yes
+    (require 'calfw-cal)
+
+   (setq calendar-week-start-day 1
+            calendar-day-name-array
+            ["neděle" "pondělí" "úterý" "středa" 
+             "čtvrtek" "pátek" "sobota"]
+            calendar-month-name-array
+            ["leden" "únor" "březen" "duben" "květen"
+             "červen" "červenec" "srpen" "září"
+             "říjen" "listopad" "prosinec"])
+  ;; (setq cfw:display-calendar-holidays t)
+#+END_SRC
+
+
+** selected text colour
+#+BEGIN_SRC emacs-lisp :tangle no
+(set-face-background 'region "purple3")
+#+END_SRC
+
+
+** meeting-notes  ----   meeting done
+#+BEGIN_SRC emacs-lisp :tangle yes
+(defun dm-meeting-notes ()
+  "Call this after creating an org-mode heading for where the notes for the meeting
+should be. After calling this function, call 'dm-meeting-done' to reset the environment."
+  (interactive)
+  (outline-mark-subtree)                              ;; Select org-mode section
+  (narrow-to-region (region-beginning) (region-end))  ;; Only show that region
+  (deactivate-mark)
+  (delete-other-windows)                              ;; Get rid of other windows
+  (text-scale-set 2)                                  ;; Text is now readable by others
+  (fringe-mode 0)
+  (message "When finished taking your notes, run dm-meeting-done."))
+
+(defun dm-meeting-done ()
+  "Attempt to 'undo' the effects of taking meeting notes."
+  (interactive)
+  (widen)                                       ;; Opposite of narrow-to-region
+  (text-scale-set 0)                            ;; Reset the font size increase
+  (fringe-mode 1)
+  (winner-undo))                                ;; Put the windows back in place
+#+END_SRC
+
+** show the cursor when moving after big movements in the window
+#+BEGIN_SRC emacs-lisp :tangle yes
+(require 'beacon)
+(beacon-mode 1)
+#+END_SRC
+
+** which key, help on keybindings
+#+BEGIN_SRC emacs-lisp :tangle yes
+(which-key-mode)
+#+END_SRC
+
+** improved C-x 1
+cycles between one buffer and what was before
+#+BEGIN_SRC emacs-lisp :tangle yes
+(global-set-key (kbd "C-x 1") 'zygospore-toggle-delete-other-windows)
+#+END_SRC
+
+** manuals
+*** Outline Speed commands, at line beginning
+============================================
+
+**** outline navigation
+------------------
+n   (outshine-speed-move-safe (quote outline-next-visible-heading))
+p   (outshine-speed-move-safe (quote outline-previous-visible-heading))
+f   (outshine-speed-move-safe (quote outline-forward-same-level))
+u   (outshine-speed-move-safe (quote outline-up-heading))
+b   (outshine-speed-move-safe (quote outline-backward-same-level))
+F   outshine-next-block
+B   outshine-previous-block
+j   outshine-navi
+J   outshine-imenu
+g   outshine-imenu
+
+**** Outline Visibility
+------------------
+c   outline-cycle
+C   outshine-cycle-buffer
+    (outshine-use-outorg (quote org-display-outline-path) (quote WHOLE-BUFFER-P))
+r   outshine-narrow-to-subtree
+w   widen
+
+**** Outline Structure Editing
+-------------------------
+U   outline-move-subtree-up
+D   outline-move-subtree-down
++   outline-demote
+-   outline-promote
+i   outshine-insert-heading
+^   outshine-sort-entries
+m   outline-mark-subtree
+#   outshine-toggle-comment
+
+**** Clock Commands
+--------------
+I   outshine-clock-in
+O   outshine-clock-out
+
+**** Date & Time Commands
+--------------------
+.   outshine-time-stamp
+!   outshine-time-stamp-inactive
+d   outshine-deadline
+s   outshine-schedule
+
+**** Exporting
+---------
+x   outshine-export-dispatch
+
+**** Meta Data Editing
+-----------------
+t   outshine-todo
+,   outshine-priority
+0   (outshine-use-outorg (lambda nil (interactive) (org-priority 32)))
+1   (outshine-use-outorg (lambda nil (interactive) (org-priority 65)))
+2   (outshine-use-outorg (lambda nil (interactive) (org-priority 66)))
+3   (outshine-use-outorg (lambda nil (interactive) (org-priority 67)))
+:   outshine-set-tags-command
+
+**** Properties and Effort
+---------------------
+y   outshine-set-property
+Y   outshine-set-property-and-value
+e   outshine-set-effort
+E   outshine-inc-effort
+v   outshine-agenda
+<   (outshine-agenda-set-restriction-lock)
+>   (outshine-agenda-remove-restriction-lock)
+
+**** Misc
+----
+o   outshine-open-at-point
+?   outshine-speed-command-help
+
+*** Org-Mode Speed commands
+===========================
+
+**** Outline Navigation
+------------------
+n   (org-speed-move-safe (quote outline-next-visible-heading))
+p   (org-speed-move-safe (quote outline-previous-visible-heading))
+f   (org-speed-move-safe (quote org-forward-heading-same-level))
+b   (org-speed-move-safe (quote org-backward-heading-same-level))
+F   org-next-block
+B   org-previous-block
+u   (org-speed-move-safe (quote outline-up-heading))
+j   org-goto
+g   (org-refile t)
+
+**** Outline Visibility
+------------------
+c   org-cycle
+C   org-shifttab
+    org-display-outline-path
+s   org-narrow-to-subtree
+=   org-columns
+
+**** Outline Structure Editing
+-------------------------
+U   org-shiftmetaup
+D   org-shiftmetadown
+r   org-metaright
+l   org-metaleft
+R   org-shiftmetaright
+L   org-shiftmetaleft
+i   (progn (forward-char 1) (call-interactively (quote org-insert-heading-respect-content)))
+^   org-sort
+w   org-refile
+a   org-archive-subtree-default-with-confirmation
+@   org-mark-subtree
+#   org-toggle-comment
+
+**** Clock Commands
+--------------
+I   org-clock-in
+O   org-clock-out
+
+**** Meta Data Editing
+:PROPERTIES:
+:APPT_WARNTIME: 1
+:END:
+-----------------
+t   org-todo
+,   (org-priority)
+0   (org-priority 32)
+1   (org-priority 65)
+2   (org-priority 66)
+3   (org-priority 67)
+:   org-set-tags-command
+e   org-set-effort
+E   org-inc-effort
+W   (lambda (m) (interactive "sMinutes before warning: ") (org-entry-put (point) "APPT_WARNTIME" m))
+
+**** Agenda Views etc
+----------------
+v   org-agenda
+/   org-sparse-tree
+
+**** Misc
+----
+o   org-open-at-point
+?   org-speed-command-help
+<   (org-agenda-set-restriction-lock (quote subtree))
+>   (org-agenda-remove-restriction-lock)
+
+
+
+
+*** Refile
+=C-c C-w=
+#+BEGIN_SRC emacs-lisp :tangle yes
+(setq org-refile-targets '((org-agenda-files :maxlevel . 1)))
+#+END_SRC
+
+** wrap line ends in org mode
+#+BEGIN_SRC emacs-lisp :tangle yes
+(add-hook 'org-mode-hook 'turn-on-auto-fill)
+#+END_SRC
+
+** set font to big, zoom the screen
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-zoom ()
+      "Use big fonts, zoom the screen."
+      (interactive)
+      ; (olivetti-mode t)
+      (message "Use dm-zoom-out (or C-c u) to get back to normal size.")  
+      ;; (custom-set-faces '(default ((t (:height 168)))))
+      (text-scale-set 2))
+
+  (bind-key "C-c z" 'dm-zoom) 
+      ; test and delete
+      ; '(default ((t (:height 166 :width normal :foundry "nil" :family "Input"))))))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-zoom-out ()
+      "Go back to the standard text size."
+      (interactive)
+      (message "I am back to normal text size.")  
+      ;; (custom-set-faces '(default ((t (:height 155)))))
+      (text-scale-set 1))
+
+      (bind-key "C-c u" 'dm-zoom-out) 
+#+END_SRC
+
+
+** winner mode, C-c arrow
+#+BEGIN_SRC emacs-lisp :tangle yes
+(winner-mode t)
+#+END_SRC
+
+** company mode
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package company
+    :defer t
+    :bind
+    ("C-c h" . global-company-mode))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :tangle no
+  (use-package company
+    :config
+    ;; (global-company-mode)
+      (add-hook 'after-init-hook 'global-company-mode)
+      :bind
+      ("C-c h" . global-company-mode))
+#+END_SRC
+
+or
+
+#+BEGIN_SRC emacs-lisp :tangle no
+  (bind-key "C-c h" 'company-mode)
+  (add-hook 'after-init-hook 'global-company-mode)
+#+END_SRC
+
+** olivetti mode
+C-c [ [ [ to shrink, ...
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "C-c o" 'olivetti-mode)
+#+END_SRC
+
+** set text width, auto fill mode, word wrap
+#+BEGIN_SRC emacs-lisp :tangle yes
+(setq set-fill-column 60)
+(bind-key "C-c q" 'auto-fill-mode)
+#+END_SRC
+
+** find files everywhere with helm-locate
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (bind-key "C-M-s" 'helm-locate)
+  (eval-after-load 'company
+    '(progn
+       (define-key company-mode-map (kbd "C-;") 'helm-company)
+       (define-key company-active-map (kbd "C-;") 'helm-company)))
+#+END_SRC
+
+** describe key binding with helm
+#+BEGIN_SRC emacs-lisp :tangle yes
+(require 'helm-descbinds)
+(helm-descbinds-mode)
+#+END_SRC
+
+** new scratch bufferX
+#+BEGIN_SRC emacs-lisp :tangle yes
+(defun scratch ()
+  "Create *scratch* buffer. You can have a *scratchX* if u like. :)"
+  (interactive)
+  (let ((n 0)
+        bufname)
+    (while (progn
+             (setq bufname (concat "*scratch"
+                                   (if (= n 0) "" (int-to-string n))
+                                   "*"))
+             (setq n (1+ n))
+             (get-buffer bufname)))
+    (switch-to-buffer (get-buffer-create bufname))
+    (if (= n 1) initial-major-mode))) ; 1, because n was incremented
+#+END_SRC
+
+** /fix PATH, to get shell in emacs working/
+#+BEGIN_SRC emacs-lisp :tangle yes
+(when (memq window-system '(mac ns))
+  (exec-path-from-shell-initialize))
+#+END_SRC
+
+** uncomment me to switch on/off full screen toggle
+#+BEGIN_SRC emacs-lisp :tangle no
+(toggle-frame-fullscreen)
+#+END_SRC
+
+** mobile org setup
+
+disable?
+beorg replaces this?
+
+*** CODE
+
+set org directory
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(setq org-directory "~/doc/org")
+#+END_SRC
+
+file, where new notes will be saved
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(setq org-mobile-inbox-for-pull "~/doc/org/mobile.org")
+#+END_SRC
+
+dropbox root directory
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(setq org-mobile-directory "~/Dropbox/Apps/MobileOrg")
+#+END_SRC
+*** instructions
+**** B.1 Setting up the staging area
+
+MobileOrg needs access to a file directory on a server to interact
+with Emacs. With a public server, consider encrypting the
+files. MobileOrg version 1.5 supports encryption for the iPhone. Org
+also requires openssl installed on the local computer. To turn on
+encryption, set the same password in MobileOrg and in Emacs. Set the
+password in the variable org-mobile-use-encryption1. Note that even
+after MobileOrg encrypts the file contents, the file names will remain
+visible on the file systems of the local computer, the server, and the
+mobile device.
+
+For a server to host files, consider options like Dropbox.com
+account2. On first connection, MobileOrg creates a directory
+MobileOrg/ on Dropbox. Pass its location to Emacs through an init file
+variable as follows:
+
+(setq org-mobile-directory "~/Dropbox/MobileOrg") 
+
+Org copies files to the above directory for MobileOrg. Org also uses
+the same directory for sharing notes between Org and MobileOrg.
+**** B.2 Pushing to MobileOrg
+
+Org pushes files listed in org-mobile-files to
+org-mobile-directory. Files include agenda files (as listed in
+org-agenda-files). Customize org-mobile-files to add other files. File
+names will be staged with paths relative to org-directory, so all
+files should be inside this directory1.
+
+Push creates a special Org file agendas.org with custom agenda views
+defined by the user2.
+
+Org writes the file index.org, containing links to other
+files. MobileOrg reads this file first from the server to determine
+what other files to download for agendas. For faster downloads,
+MobileOrg will read only those files whose checksums3 have changed.
+**** B.3 Pulling from MobileOrg
+
+- When MobileOrg synchronizes with the server, it pulls the Org files
+  for viewing. It then appends to the file mobileorg.org on the server
+  the captured entries, pointers to flagged and changed entries. Org
+  integrates its data in an inbox file format.
+
+- Org moves all entries found in mobileorg.org1 and appends them to
+  the file pointed to by the variable org-mobile-inbox-for-pull. Each
+  captured entry and each editing event is a top-level entry in the inbox file.
+
+- After moving the entries, Org attempts changes to MobileOrg. Some
+  changes are applied directly and without user interaction. Examples
+  include changes to tags, TODO state, headline and body text. Entries
+  for further action are tagged as :FLAGGED:. Org marks entries with
+  problems with an error message in the inbox. They have to be
+  resolved manually.
+
+- Org generates an agenda view for flagged entries for user
+  intervention to clean up. For notes stored in flagged entries,
+  MobileOrg displays them in the echo area when the cursor is on the
+  corresponding agenda item.  
+
+- ?  Pressing ? displays the entire flagged note in another
+  window. Org also pushes it to the kill ring. To store flagged note
+  as a normal note, use ? z C-y C-c C-c. Pressing ? twice does these
+  things: first it removes the :FLAGGED: tag; second, it removes the
+  flagged note from the property drawer; third, it signals that manual
+  editing of the flagged entry is now finished.  
+
+- C-c a ? returns to
+  the agenda view to finish processing flagged entries. Note that
+  these entries may not be the most recent since MobileOrg searches
+  files that were last pulled. To get an updated agenda view with
+  changes since the last pull, pull again.
+
+** find or open file
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "C-x C-f" 'helm-find-files)
+#+END_SRC
+
+** close other window!!
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "C-]" 'delete-other-windows)
+#+END_SRC
+
+** eval buffer
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "C-c C-b" 'eval-buffer)
+#+END_SRC
+
+** kill this buffer
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-kill-buffer()
+    "zavre buffer."
+    (interactive)
+    (kill-this-buffer))
+
+  (global-set-key (kbd "C-.") 'dm-kill-buffer)
+  ;; (global-set-key (kbd "C-.") 'kill-this-buffer) jede
+
+#+END_SRC
+
+** kill this buffer, and save
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-save-and-kill-buffer()
+      "zavre a ulozi buffer. nepta se nic"
+    (interactive)
+    (save-buffer)
+    (kill-this-buffer))
+
+  (global-set-key (kbd "C-,") 'dm-save-and-kill-buffer)
+#+END_SRC
+
+** recent files
+#+BEGIN_SRC emacs-lisp :tangle yes
+(setq recentf-max-menu-items 55
+      recentf-max-saved-items 500)
+(recentf-mode +1)
+(bind-key "C-c f" 'helm-recentf)
+#+END_SRC
+** swiper configuration - search etc.
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package swiper 
+    :defer t
+    :bind ("C-c r" . ivy-resume)
+          ("C-s"   . swiper)
+    :config
+    (setq swiper-use-visual-line t
+          swiper-action-recenter t))
+#+END_SRC
+
+** counsel-M-x shourtcut S-b
+#+BEGIN_SRC emacs-lisp :tangle no
+(bind-key "s-b" 'counsel-M-x)
+#+END_SRC
+
+** smex shourtcut S-b
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "s-b" 'smex)
+#+END_SRC
+
+** avy
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package avy
+  :defer t
+  :bind (("s-." . avy-goto-word-or-subword-1)
+         ("s-," . avy-goto-char))
+  :config
+  (setq avy-background t))
+#+END_SRC
+
+** scratch buffer initial message
+
+seraut
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq initial-scratch-message 
+  "
+
+
+  ::::::::::::::::::::.   !><!!!! !!!!! !!!,`!!!!!!!!!!> ```!!!! `!!!!!; !!!>
+  ::::::::::::::::::::.  .!!!!!!! !!!!! <!!! !!!!!!!!!!> ===y,`<! !!!!!! <!!!
+  :::::::::::::::::::::  ;!!!!!!,`!!!!! !!!! <!!!!!!!!!>`!!> =b.` `!!!!!>`!!!
+  :::::::::::::::::::::  ;!!!!!!! !!!`` !!!! <!!!!!!!!!>`!!!!; ?,  !!!!! ;!!!!
+  :::::::::::::::::::::: ;!!!!!!` .,cccc,c````!!!!!!!!!>;!!!!!, ?. !!!!! !!!!!
+  :::::::::::::::::::``` `!!!!`.zJ$$$$$$$$$c,`!!!!!!!!!!!!!!!!! J` !!!!!; !```
+  :::::::::::::::``.,c`==\ `` c$$$$$$$$$$$$$$C          ``````` $
+  ::::::::::::::: J$==`$$ h.z$$$$$$$$$=?$$$$$$L                ,F
+  ::::::::::::::. ?$,,$$$,J$$$$$$$$$P` <$$$$$$C               ,F
+  ::::::::::::::: <$$$$$$$$$$$$$$$$=  ,$$$$$$$$=b,         ,pP=
+  ::::::::::::::: ???????$$$$$$$$$`   $$$$??$$F  =?y,__,cr==
+  :::::::::::::::::::::   ?$$$$$=    J$$$= <$=     `===`
+  ::::::::::::::::::::`;!>`$$$$$ <!> $$$$ ;<$ <;,  .,.       .,,,;; .,,,,;  ,;
+  :::::::::::::::::::: !!! $$ $$.`!> =$$$ !`$C !!>`!!!!!>`!!!!!!!!! !!!!!!>`!!
+  :::::::::::::::::::.`!!! $$ $$$ `!! =$$ !>`$r`!>`!!!!! `!!!!!!!!! !!!!!!! !!
+  :::::::::::::::::::::.. z$P ?$$`;!!!;`?c `,`?c`!<!!!!! !!!!!!!!!> !!!!!!! !!
+  :::::::::::::::::::::` z$F  ?$P `````- =h `- =h````!!!.::```````-`<!!!!!!,!!
+  :::::::::::::::::::: ,$$=  ,JP=.::::::: ?F`:: ?h ::.```..::::::::::..````` .
+  ::::::::::::::::::::.==   <P= :::::::::.`$ ::: $ :::::::::::::::::::::::::::
+  :::::::::::::::::::::::::  .::::::::::::.= :::.``.::::::::::::::::::::::::::
+  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+           Georges Seurat - Sunday Afternoon on the Island of the Grande Jatte
+
+
+  ")
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :tangle no
+(setq remember-notes-initial-major-mode 'org-mode)
+(setq initial-buffer-choice 'remember-notes)
+#+END_SRC
+
+elephant
+#+BEGIN_SRC emacs-lisp :tangle no
+  (setq initial-scratch-message
+  "
+  ;; last shortuts                                           ....../ \-.   .    
+  ;;                                                      .-/     (    o\.//    
+  ;; C-x r b     ...... go to bookmard                      |  ...  \./\---'     
+  ;; X-x r m     ...... make bookmark                       |.||  |.||           
+  ;; C-c a a     ...... agenda view                                                          
+  ;;                                                        ascii elephant       
+  ;;                                                        ver.06 --- 2017-02-25
+  ;;             
+  ;; C-c C-u     ...... up level org          
+  ;; C-c C-n     ...... next heading
+  ;;     C-p     ...... prev heading 
+  ;; C-c C-f     ...... same level n
+  ;;     C-b     ...... same level p
+  ;;             
+  ;;
+  ;; C-x g        ...... git status
+  ;; C-x C-k TAB  ...... kmacro-insert-counter
+  ;;                     kmacro-set-countert
+  ;; org-capture-goto-last-stored
+
+
+
+
+  ")
+   
+#+END_SRC
+** weather forecast, wttrin, "C-x w"
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package wttrin
+     :bind ("C-x w" . wttrin)
+     :config
+     (setq wttrin-default-cities '("Hluboka nad Vltavou" "Prague"
+                                   "Cerna v Posumavi" "Torre Delle Stelle"))
+     (setq wttrin-default-accept-language '("Accept-Language" . "en-US")))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :tangle no
+  (defun dm-wttrin()
+    "Call weather forecast, but before that
+  switch to DejaVu Sans Mono font"
+    (interactive)
+    (set-frame-font "Fira Code-18" nil t)
+    (wttrin))
+
+  ;; set key binding
+  (bind-key (kbd "C-x w") 'wttrin)
+#+END_SRC
+
+** google
+*** google-translate
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (require 'google-translate)
+  (require 'google-translate-smooth-ui)
+  (bind-key "C-c t" 'google-translate-smooth-translate)
+  (setq google-translate-translation-directions-alist '(("en" . "cs")))
+  (setq google-translate-default-source-language "en")
+  (setq google-translate-default-target-language "cs")
+#+END_SRC
+
+*** google maps
+#+BEGIN_SRC emacs-lisp :tangle yes
+(require 'google-maps)
+#+END_SRC
+*** google this
+#+BEGIN_SRC emacs-lisp :tangle yes
+(require 'google-this)
+(google-this-mode 1)
+(bind-key "C-c g" 'google-this)
+#+END_SRC
+*** google suggest
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (bind-key "C-c C-g" 'helm-google-suggest)
+#+END_SRC
+** GOLDEN RATIO resize
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package golden-ratio
+    :defer t)
+
+#+END_SRC
+
+** windmove
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package windmove
+    ;; :defer 4
+    :defer t
+    :config
+    ;; use command key on Mac
+    (windmove-default-keybindings 'super)
+    ;; wrap around at edges
+    (setq windmove-wrap-around t))
+#+END_SRC
+
+** visual bookmarks
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package bm
+    :defer t
+    :bind (("<C-f2>" . bm-toggle)
+           ("<f2>"   . bm-next)
+           ("<s-f2>" . bm-previous)))
+#+END_SRC
+
+** crux
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package crux
+    :defer t
+    :bind
+    (("C-a" . crux-move-beginning-of-line))
+    (("C-c I" . crux-find-user-init-file))
+    (("C-c S" . crux-find-shell-init-file)))
+#+END_SRC
+** deft search tool setup, shortcut F8
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package deft
+    :bind
+    ([f8] . deft)
+    :config
+          (setq deft-extensions '("txt" "tex" "org" "el"))
+          (setq deft-directory "~/.deft")
+          (setq deft-default-extension "org")
+          (setq deft-text-mode 'org-mode)          
+          (setq deft-recursive t))
+#+END_SRC
+** swap two buffers
+Either vertical or horizontal.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package transpose-frame
+  :defer t
+  :bind
+  ("C-x <right>" . flop-frame)
+  ("C-x <left>" . flop-frame)
+  ("C-x <up>" . flip-frame)
+  ("C-x <down>" . flip-frame))
+#+END_SRC
+
+** paradox token
+
+not active, tangle set to no.
+did not work.
+
+this is a token to connect paradox with github, enable to 
+award a package with stars etc.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq paradox-github-token '67c65e0c1a1edcf759a068e7e598dd4bbd4aa1c3)
+#+END_SRC
+
+** save place -- position -- between saves
+ not working
+#+BEGIN_SRC emacs-lisp :tangle no
+    (setq-default save-place t )
+    (save-place-mode t)
+  #+END_SRC
+
+** ruby mode
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (require 'ob-ruby)
+  (add-hook 'ruby-mode-hook 'robe-mode)
+#+END_SRC
+
+** tunning literate programming
+#+BEGIN_SRC emacs-lisp :tangle yes
+(setq org-confirm-babel-evaluate nil org-src-fontify-natively t
+      org-src-tab-acts-natively t)
+#+END_SRC
+
+** automatizace texu C-c x
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-tex ()
+    "Save current file, tangle it,
+  switch to next buffer -- which is *eshell*,
+  (must be alive) and compile."
+    (interactive)
+    (message "TeXing your file...")
+    (save-buffer)
+    (org-babel-tangle)
+    (dm-switch-to-previous-buffer))
+
+    (bind-key "C-c x" 'dm-tex)
+
+#+END_SRC
+
+** setup windows at startup
+jump to stored setup with
+=C-x r j w=
+
+je to prima ale nemám pro to využití
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-setup-windows ()
+    "Nastav mi dve okna vedle sebe."
+    (interactive)
+    (delete-other-windows)
+
+    ;; put diary to the other side
+    (split-window-horizontally)
+    (diary)
+    (split-window-vertically)
+    (eshell)
+    (window-configuration-to-register ?w))
+
+  ;; (dm-setup-windows)
+#+END_SRC
+
+After this configuration, ``M-w`` serves as both a command and a
+prefix key for other commands. ``M-w`` alone saves in the order of
+active region, url, email and finally current line (See
+``easy-kill-try-things``). As a prefix key:
+
+#. ``M-w w``: save word at point
+#. ``M-w s``: save sexp at point
+#. ``M-w l``: save list at point (enclosing sexp)
+#. ``M-w d``: save defun at point
+#. ``M-w D``: save current defun name
+#. ``M-w f``: save file at point
+#. ``M-w b``: save ``buffer-file-name`` or ``default-directory``.
+   ``-`` changes the kill to the directory name, ``+`` to full name
+   and ``0`` to basename.
+
+The following keys modify the selection:
+
+#. ``@``: append selection to previous kill and exit. For example,
+   ``M-w d @`` will append current function to last kill.
+#. ``C-w``: kill selection and exit
+#. ``+``, ``-`` and ``1..9``: expand/shrink selection
+#. ``0`` shrink the selection to the initial size i.e. before any
+   expansion
+#. ``C-SPC``: turn selection into an active region
+#. ``C-g``: abort
+#. ``?``: help
+
+For example, ``M-w w`` saves current word, repeat ``w`` to expand the
+kill to include the next word. ``5`` to include the next 5 words etc.
+The other commands also follow this pattern.
+
+``+``/``-`` does expanding/shrinking according to the thing selected.
+So for ``word`` the expansion is word-wise, for ``line`` line-wise,
+for ``list`` or ``sexp``, list-wise.
+
+``list-wise`` expanding/shrinking work well in lispy modes (elisp,
+Common Lisp, Scheme, Clojure etc.), smie-based modes (Prolog, SML,
+Modula2, Shell, Ruby, Octave, CSS, SQL etc.), Org mode, Nxml mode and
+Js2 mode.
+
+To copy the enclosing list in lispy modes, I used to do a lot of
+``C-M-u C-M-SPC M-w``. Now the key sequence is replaced by ``M-w l``
+(save list at point) as shown in `screenshot
+<http://i.imgur.com/8TNgPly.png>`_:
+
+.. figure:: http://i.imgur.com/8TNgPly.png
+   :target: http://i.imgur.com/8TNgPly.png
+   :alt: ``M-w l``
+
+easy-mark
+~~~~~~~~~
+
+``easy-mark`` is similar to ``easy-kill`` but marks the region
+immediately. It can be a handy replacement for ``mark-sexp`` allowing
+``+``/``-`` to do list-wise expanding/shrinking and marks the whole
+sexp even when in the middle of one. ::
+
+   (global-set-key [remap mark-sexp] 'easy-mark)
+
+#+END_VERSE
+
+** ox-rst, restructured text
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package ox-rst)
+#+END_SRC
+** lilypond, music typesetting
+
+zatím to nemám nastavené :-)
+
+** babel tangle for shell, R
+#+BEGIN_SRC emacs-lisp :tangle yes
+(require 'ob-shell)
+(require 'ob-R)
+#+END_SRC
+
+
+#+begin_src sh :tangle no
+   echo "Hello $USER! Today is `date`"
+#+end_src
+
+** Insert Comment of Eval --- C-x a k
+
+    While writing and documenting Emacs Lisp code, it would be helpful
+    to insert the results of evaluation of an s-expression directly
+    into the code as a comment:
+
+    #+BEGIN_SRC emacs-lisp :tangle yes
+      (use-package lisp-mode
+        :config (defun eval-and-comment-output ()
+                  "Add the output of the sexp as a comment after the sexp"
+                  (interactive)
+                  (save-excursion
+                    (end-of-line)
+                    (condition-case nil
+                        (princ (concat " ; -> " (pp-to-string (eval (preceding-sexp))))
+                               (current-buffer))
+                      (error (message "Invalid expression")))))
+
+        :bind ("C-x a k" . eval-and-comment-output))
+    #+END_SRC
+** adjusted agenda C-x C-a
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq org-agenda-include-diary t)
+  (defun dm-pop-to-org-agenda (split)
+    "Visit the org agenda, in the current window or a SPLIT."
+    (interactive "P")
+    (org-agenda-list)
+    (org-agenda-follow-mode)
+    (when (not split)
+      (delete-other-windows)))
+  (bind-key "C-x C-a" 'dm-pop-to-org-agenda)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq org-agenda-custom-commands
+        '(("c" "My Agenda View" agenda "")))
+#+END_SRC
+
+*** my agenda and todos
+**** prio-sorting
+
+
+This function enables the sorting of prio items, but stil takces all prio A, not just TODO.
+Easy, I will not assign prio to non-todos.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-org-skip-priority (priority)
+    "Do not show item or subtree if priority set to PRIORITY.
+  PRIORITY may be ?A of ?B or ?C."
+    (let ((subtree-end (save-excursion (org-end-of-subtree t)))
+          (pri-value (* 1000 (- org-lowest-priority priority)))
+          (pri-current (org-get-priority (thing-at-point 'line t))))
+      (if (= pri-value pri-current)
+          subtree-end
+        nil)))
+#+END_SRC
+
+**** this is the main function putting all together
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq org-agenda-custom-commands
+        '(("c" "My Agenda View"
+           ((tags "PRIORITY=\"A\""
+                  ((org-agenda-skip-function '(org-agenda-skip-entry-if 'todo 'done))
+                   (org-agenda-overriding-header "High-Prio tasks:")))
+            (agenda "" ((org-agenda-span 1)))
+            (alltodo ""
+                     ((org-agenda-skip-function
+                       '(or (dm-org-skip-priority ?A)
+                            (org-agenda-skip-if nil '(scheduled deadline))))
+                       (org-agenda-overriding-header "Normal-Prio tasks:"))))
+                      ((org-agenda-compact-blocks t)))))
+
+#+END_SRC
+
+**** this enables the require command
+
+
+
+(define-key global-map (kbd "C-x C-a") 'dm-pop-to-org-agenda)
+
+** compare two buffers, files, vdiff
+ #+BEGIN_SRC emacs-lisp :tangle yes
+   (use-package vdiff
+     :defer t
+     :config
+       (define-key vdiff-mode-map (kbd "C-c") vdiff-mode-prefix-map))
+ #+END_SRC
+** use <p or <t TAB to create a #+BEGIN emacs-lisp template. 
+#+BEGIN_SRC emacs-lisp :tangle yes
+(add-to-list 'org-structure-template-alist
+               (list "p" (concat "#+BEGIN_SRC emacs-lisp :tangle yes\n"
+                                 "?\n"
+                                 "#+END_SRC")))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (add-to-list 'org-structure-template-alist
+               (list "t" (concat "#+BEGIN_SRC tex :tangle yes\n\\kapitola\n\n" "?\n" "#+END_SRC")))
+#+END_SRC
+
+** outshine and outorg
+
+Outshine attempts to bring the look&feel of Org-mode to the world
+outside of the Org major-mode.
+
+*** Code
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defvar outline-minor-mode-prefix "\M-#")
+  (bind-key "M-# #" 'outorg-edit-as-org)
+  (require 'outshine)
+  ;; (add-hook 'outline-minor-mode-hook 'outshine-hook-function)
+  (add-hook 'emacs-lisp-mode-hook 'outline-minor-mode)
+  (add-hook 'LaTeX-mode-hook 'outline-minor-mode)
+  (add-hook 'picolisp-mode-hook 'outline-minor-mode)
+  (add-hook 'clojure-mode-hook 'outline-minor-mode)
+  (add-hook 'ess-mode-hook 'outline-minor-mode)
+  (add-hook 'ledger-mode-hook 'outline-minor-mode)
+  (add-hook 'message-mode-hook 'outline-minor-mode)
+  (setq outshine-use-speed-commands t)
+#+END_SRC
+
+*** About outshine
+
+Outshine attempts to bring the look&feel of Org-mode to the (GNU
+Emacs) world outside of the Org major-mode. It is an extension of
+outline-minor-mode (Org-mode itself derives from outline-mode), so
+there is no such thing like an 'outshine mode', only
+`outline-minor-mode' with outshine extensions loaded.
+
+Outshine is major-mode agnostic. At least in theory, it should work
+out-of-the-box with all major-modes, even those not yet written, as
+long as these modes have comment syntax defined. In real life there
+are some major-modes where outshine just works, others that need some
+minor tweaks to make outshine work, and a few that need special
+handling.
+
+An outshine file is structured just like an org file, only that the
+headlines are outcommented with the current major-mode's comment
+syntax. We call these outcommented org headers 'outshine headers'. The
+different headline levels are fontified like in Org-mode, and many of
+the outline-navigation, visibility cycling and structure editing
+commands known from Org-mode work in outshine too. An Org-mode user
+will feel right at home in an outshine buffer, the look&feel should be
+pretty similar, only the keybindings differ. Since outshine extends a
+minor-mode it has to avoid conflicts with major-mode keymaps by using
+a rather unusual prefix that is still easy to type (M-#). But the
+Org-mode speed-commands have been ported to outshine too, and they use
+exactly the same (one-key) bindings like in Org-mod
+* 5 file and folder orientation
+** minimap, sublimity - run with sublimity-mode
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package sublimity
+
+  :config
+  (use-package sublimity-scroll)
+  (use-package sublimity-map)
+  (sublimity-map-set-delay 0))
+#+END_SRC
+** dired improvements
+*** dired human readable sizes
+#+BEGIN_SRC emacs-lisp :tangle yes
+(setq dired-listing-switches "-alh")
+#+END_SRC
+*** reuse dired+ windows
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package dired+
+    :ensure t
+    :config
+    (diredp-toggle-find-file-reuse-dir 0))
+#+END_SRC
+*** narrow dired to match filter
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package dired-narrow
+    :ensure t
+    :bind (:map dired-mode-map
+                ("/" . dired-narrow)))
+#+END_SRC
+
+*** kopírování dwim
+nastavení dired-dwim-target aby kopíroval soubory
+ #+BEGIN_SRC emacs-lisp :tangle yes
+ (setq dired-dwim-target 't)
+ #+END_SRC
+
+*** last visited directories
+#+BEGIN_SRC emacs-lisp :tangle yes
+   (defun dm-ivy-dired-recent-dirs ()
+    "Present a list of recently used directories
+     and open the selected one in dired"
+    (interactive)
+    (let ((recent-dirs
+           (delete-dups
+            (mapcar (lambda (file)
+                      (if (file-directory-p file) file (file-name-directory file)))
+                    recentf-list))))
+
+      (let ((dir (ivy-read "Directory list: "
+                           recent-dirs
+                           :re-builder #'ivy--regex
+                           :sort nil
+                           :initial-input nil)))
+        (dired dir))))
+
+    (bind-key "C-x C-d" 'dm-ivy-dired-recent-dirs)
+#+END_SRC
+
+*** peep dired
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "C-x C-p" 'peep-dired)
+#+END_SRC
+
+* 6 netangluje se
+
+** Startup dashboard
+#+BEGIN_SRC emacs-lisp :tangle no
+  (use-package dashboard
+    :config
+    (dashboard-setup-startup-hook))
+
+  ;; Set the title
+  (setq dashboard-banner-logo-title "emacs is here :]")
+  ;; Set the banner
+  (setq dashboard-startup-banner "~/doc/leica2.png")
+  ;; Value can be
+  ;; 'official which displays the official emacs logo
+  ;; 'logo which displays an alternative emacs logo
+  ;; 1, 2 or 3 which displays one of the text banners
+  ;; "path/to/your/image.png which displays whatever image you would prefer
+  (setq dashboard-items '((recents  . 5)
+                          (bookmarks . 5)))
+#+END_SRC
+
+** how to create a disk image from folder
+#+BEGIN_SRC sh :tangle no
+  sudo hdiutil create ~/Desktop/new_image.dmg -srcfolder ~/Desktop/source_folder
+#+END_SRC
+** org mode, velke nadpisy
+#+BEGIN_SRC emacs-lisp :tangle no
+  (let* ((variable-tuple (cond ((x-list-fonts "Input") '(:font "Input"))
+                               (nil (warn "Cannot find a Sans Serif Font.  Install Source Sans Pro."))))
+         (base-font-color     (face-foreground 'default nil 'default))
+         (headline           `(:inherit default :weight bold :foreground ,base-font-color)))
+
+  (custom-theme-set-faces 'user
+                          `(org-level-8 ((t (,@headline ,@variable-tuple))))
+                          `(org-level-7 ((t (,@headline ,@variable-tuple))))
+                          `(org-level-6 ((t (,@headline ,@variable-tuple))))
+                          `(org-level-5 ((t (,@headline ,@variable-tuple))))
+                          `(org-level-4 ((t (,@headline ,@variable-tuple))))
+                          `(org-level-3 ((t (,@headline ,@variable-tuple :height 1.1))))
+                          `(org-level-2 ((t (,@headline ,@variable-tuple :height 1.17))))
+                          `(org-level-1 ((t (,@headline ,@variable-tuple :height 1.25))))
+                          `(org-document-title ((t (,@headline ,@variable-tuple :height 1.5 :underline nil))))))
+
+#+END_SRC
+
+** dired quick sort
+#+BEGIN_SRC emacs-lisp :tangle no
+(use-package dired-quick-sort
+  :defer t
+  :config
+  (dired-quick-sort-setup))
+#+END_SRC
+
+** all the icons
+#+BEGIN_SRC emacs-lisp :tangle no
+(use-package all-the-icons)
+(use-package all-the-icons-dired
+ :config
+ (add-hook 'dired-mode-hook 'all-the-icons-dired-mode))
+#+END_SRC
+
+** load some functions from extenal file
+loadovat separe file,
+ale necham to tu abych videl jak se to dela.
+
+[[file:~/doc/my-agenda.org][link to the org file:]]
+
+#+BEGIN_SRC emacs-lisp :tangle no 
+(load "~/doc/my-agenda.el")
+#+END_SRC
+** GO, el-go
+includes some outdated package so I do not use it
+which is great pitty ...
+
+#+BEGIN_SRC emacs-lisp :tangle no
+  (add-to-list 'load-path "~/.emacs.d/elpa/el-go")
+  (require 'go)
+#+END_SRC
+** inconsolata
+#+BEGIN_SRC emacs-lisp :tangle no
+(set-frame-font "Inconsolata-19" nil t)
+#+END_SRC
+
+** ACTIVE set the default font to Fira Code 
+#+BEGIN_SRC emacs-lisp :tangle no
+  ;; (setq default-frame-alist '((font . "Fira Code-15")))
+  (setq default-frame-alist '((font . "Comenia Script A-21")))
+#+END_SRC
+
+** ditaa org mode emacs
+#+BEGIN_SRC emacs-lisp :tangle no
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((ditaa . t))) ; this line activates ditaa
+#+END_SRC
+
+and this is example how to use it
+
+#+begin_src ditaa :file ./helloworld.png
+    +----------------+
+    | Hello World!!! |              
+    | super draku    |
+    +----------------+
+
+  +--------+   +-------+    +-------+
+  |        | --+ ditaa +--> |       |
+  |  Text  |   +-------+    |diagram|
+  |Document|   |!magic!|    |       |
+  |     {d}|   |       |    |       |
+  +---+----+   +-------+    +-------+
+      :                         ^
+      |       Lots of work      |
+      +-------------------------+
+
+      /----+  DAAP /-----+-----+ Audio  /--------+
+      | PC |<------| RPi | MPD |------->| Stereo |
+      +----+       +-----+-----+        +--------+
+         |                 ^ ^
+         |     ncmpcpp     | | mpdroid /---------+
+         +--------=--------+ +----=----| Nexus S |
+                                       +---------+
+  Memory:
+
+        +--------+
+     0  |        |  <- start
+        +--------+
+     1  |        |  <- q  scans from start to end
+        +--------+
+        :  ..... |
+        +--------+
+        |        |  <- end
+        +--------+  <-+
+        |        |    |
+        +--------+    | rest of the
+        :  ..... |    | allocated memory
+        +--------+    |
+    n   |        |    |
+        +--------+  <-+
+
+
+  Strings:
+
+
+      0               n
+     +--+=----+--+--+--+
+     |  | ... |  |  |\0|
+     +--+-----+--+--+--+
+       ^        ^
+       |        |
+       |        +-- q moves from the
+       |            end to the start
+       p moves from
+         start to the end
+
+
+  Sectioned:
+
+     +------+----+----+----+----+----+----+
+     | xxxx | yy | zz | 00 | tt | 11 | ss |
+     +------+----+----+----+----+----+----+
+      ^      ^    ^    ^    ^    ^    ^ 
+      |      |    |    |    |    |    |
+      |      |    |    |    |    |    +--- storage registry
+      |      |    |    |    |    +-------- always set to 1
+      |      |    |    |    +------------- temp value
+      |      |    |    +------------------ always zeroed 
+      |      |    +----------------------- zero flag value
+      |      +---------------------------- y register
+      +----------------------------------- x address   
+
+  Text Handling:
+
+  /-----------------\
+  | Things to do    |
+  | cGRE            |
+  | o Cut the grass |
+  | o Buy jam       |
+  | o Fix car       |     
+  | o Make website  |
+  \-----------------/
+
+
+  Color codes:
+
+  /-------------+-------------\
+  |cRED RED     |cBLU BLU     |
+  +-------------+-------------+
+  |cGRE GRE     |cPNK PNK     |
+  +-------------+-------------+
+  |cBLK BLK     |cYEL YEL     |
+  \-------------+-------------/
+
+  /----\ /----\
+  |c33F| |cC02|
+  |    | |    |
+  \----/ \----/
+
+  /----\ /----\
+  |c1FF| |c1AB|                           
+  |    | |    |
+  \----/ \----/
+#+end_src
+
+#+begin_src ditaa :file ./arrow.png
+      /-\
+  /-\ | |
+  | | | | /-\
+<-/ | | | | | /->
+    \-/ | | | |
+        | | \-/
+        \-/
+
+
+#+end_src
+
+some ditaa examples
+https://bl.ocks.org/nicerobot/8379371
+
+* 7 last stuff, from hrs
+** org-manage
+ #+BEGIN_SRC emacs-lisp :tangle yes
+   (setq org-manage-directory-org "~/doc")
+   (add-to-list 'load-path "~/.emacs.d/elpa/org-manage-0.2")
+   ;;(require 'ctable)                       
+   ;;(require 'org-manage)
+   (use-package ctable
+     :defer t)
+   (use-package org-manage
+       :defer t)
+ #+END_SRC
+** elmacro -- translate macro commands into elisp -- awesome
+Shows keyboard macros or latest interactive commands as emacs lisp.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package elmacro
+    :hook
+    (elmacro-mode))
+#+END_SRC
+** Quickly visit Emacs configuration
+
+I futz around with my dotfiles a lot. This binds =C-c e= to quickly open my
+Emacs configuration file. =dm-init.org= is the file name.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-visit-emacs-config ()
+    (interactive)
+    (find-file "~/.emacs.d/dm-init.org"))
+
+  (global-set-key (kbd "C-c e") 'dm-visit-emacs-config)
+#+END_SRC
+
+** Use =company-mode= everywhere
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (add-hook 'after-init-hook 'global-company-mode)
+#+END_SRC
+
+** Always indent with spaces
+
+Never use tabs. Tabs are the devil’s whitespace.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq-default indent-tabs-mode nil)
+#+END_SRC
+
+** Edit code snippet in current window
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq org-src-window-setup 'current-window)
+#+END_SRC
+
+** Use arrow, instead of 3 dots
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq org-ellipsis "⤵")
+#+END_SRC
+
+** saveplace -- visit file where last time left
+#+BEGIN_SRC emacs-lisp :tangle yes
+    ;; (require 'saveplace)                   
+    ;; (save-place-mode)
+    ;;(use-package saveplace
+    ;;  :hook
+    ;;  (save-place-auto-mode))
+  (save-place-mode 1)                     ;working
+#+END_SRC
+
+** show line numbers, linum
+#+BEGIN_SRC emacs-lisp :tangle no
+  (global-linum-mode)
+#+END_SRC
+
+** highlight current line
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(global-hl-line-mode t)
+#+END_SRC
+
+** garbage collection
+#+BEGIN_SRC emacs-lisp :tangle no
+(setq garbage-collection-messages t)
+#+END_SRC
+
+** remove RESULTS blocks -- S-]
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defconst help/org-special-pre "^\s*#[+]")
+  (defun help/org-2every-src-block (fn)
+    "Visit every Source-Block and evaluate `FN'."
+    (interactive)
+    (save-excursion
+      (goto-char (point-min))
+      (let ((case-fold-search t))
+        (while (re-search-forward (concat help/org-special-pre "BEGIN_SRC") nil t)
+          (let ((element (org-element-at-point)))
+            (when (eq (org-element-type element) 'src-block)
+              (funcall fn element)))))
+      (save-buffer)))
+  (define-key org-mode-map (kbd "s-]") (lambda () (interactive)
+                                         (help/org-2every-src-block
+                                          'org-babel-remove-result)))
+#+END_SRC
+
+** spaceline setup
+#+BEGIN_SRC emacs-lisp :tangle no
+(require 'spaceline-config)
+(spaceline-emacs-theme) ;; or spaceline-emacs-theme
+#+END_SRC
+
+
+** powerline tuning -- dm-powerline-nano-theme
+
+must be called manually
+
+#+BEGIN_SRC emacs-lisp :tangle no
+  (defun dm-powerline-nano-theme ()
+    "Setup a nano-like mode-line."
+    (interactive)
+    (setq-default mode-line-format
+                  '("%e"
+                    (:eval
+                     (let* ((active (powerline-selected-window-active))
+                            (face0 (if active 'powerline-active0 'powerline-inactive0))
+                            (lhs (list (powerline-raw (concat "d277@protonmail.ch " (number-to-string time-date--day-in-year))
+                                                      face0 'l)))
+                            (rhs (list (if (buffer-modified-p) (powerline-raw "Modified" face0 'r))
+                                       (powerline-fill face0 0)))
+                            (center (list (powerline-raw "%b" face0))))
+                       (concat (powerline-render lhs)
+                               (powerline-fill-center face0 (/ (powerline-width center) 2.0))
+                               (powerline-render center)
+                               (powerline-fill face0 (powerline-width rhs))
+                               (powerline-render rhs)))))))
+
+
+#+END_SRC
+
+more mode line example
+
+#+BEGIN_SRC emacs-lisp :tangle no
+  (setq-default mode-line-format
+        (list
+         " " mode-line-modified
+         " %[" mode-line-buffer-identification "%] %l %4 "
+         ;;mode-line-position
+         mode-line-misc-info
+         mode-line-end-spaces))
+  (setq global-mode-string '(("d277@pm.me")
+                            "" display-time-string appt-mode-string))
+#+END_SRC
+** eww
+#+BEGIN_SRC emacs-lisp :tangle no
+  (use-package eww
+    :defer t
+    :init
+    (setq browse-url-browser-function
+          '((".*google.*maps.*" . browse-url-generic)
+            ;; Github goes to firefox, but not gist
+            ("http.*\/\/github.com" . browse-url-generic)
+            ("groups.google.com" . browse-url-generic)
+            ("docs.google.com" . browse-url-generic)
+            ("melpa.org" . browse-url-generic)
+            ("build.*\.elastic.co" . browse-url-generic)
+            (".*-ci\.elastic.co" . browse-url-generic)
+            ("internal-ci\.elastic\.co" . browse-url-generic)
+            ("zendesk\.com" . browse-url-generic)
+            ("salesforce\.com" . browse-url-generic)
+            ("stackoverflow\.com" . browse-url-generic)
+            ("apache\.org\/jira" . browse-url-generic)
+            ("thepoachedegg\.net" . browse-url-generic)
+            ("zoom.us" . browse-url-generic)
+            ("t.co" . browse-url-generic)
+            ("twitter.com" . browse-url-generic)
+            ("\/\/a.co" . browse-url-generic)
+            ("youtube.com" . browse-url-generic)
+            ("amazon.com" . browse-url-generic)
+            ("." . eww-browse-url)))
+    (setq shr-external-browser 'browse-url-generic)
+    (setq browse-url-generic-program (executable-find "Safari"))
+    (add-hook 'eww-mode-hook #'toggle-word-wrap)
+    (add-hook 'eww-mode-hook #'visual-line-mode)
+    :config
+    (use-package s :ensure t)
+    (define-key eww-mode-map "o" 'eww)
+    (define-key eww-mode-map "O" 'eww-browse-with-external-browser)
+    (define-key eww-mode-map "j" 'next-line)
+    (define-key eww-mode-map "k" 'previous-line)
+
+    (use-package eww-lnum
+      :ensure t
+      :config
+      (bind-key "f" #'eww-lnum-follow eww-mode-map)
+      (bind-key "U" #'eww-lnum-universal eww-mode-map)))
+#+END_SRC
+
+** Open files in dired mode using 'open - z'
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (eval-after-load "dired"
+    '(progn
+       (define-key dired-mode-map (kbd "z")
+         (lambda () (interactive)
+           (let ((fn (dired-get-file-for-visit)))
+             (start-process "default-app" nil "open" fn))))))
+#+END_SRC
+
+
+** Magit
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package magit
+    :bind ("C-x g" . magit-status)
+    :defer t)
+#+END_SRC
+
+** leuven theme fix color
+in the helm m-x highlighted line
+#+BEGIN_SRC emacs-lisp :tangle no
+(set-face-attribute 'helm-selection nil
+                    :background "keyboardFocusIndicatorColor")
+#+END_SRC
+
+** eshell in small window C-!
+This creates a buffer-specific window in the lower third portion and
+starts eshell, which picks up that buffers's directory.
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun eshell-here ()
+    "Opens up a new shell in the directory associated with the current buffer. The eshell is renamed to match that directory to make multiple eshell windows easier."
+    (interactive)
+    (let* ((parent (if (buffer-file-name)
+                       (file-name-directory (buffer-file-name))
+                     default-directory))
+           (height (/ (window-total-height) 3))
+           (name   (car (last (split-string parent "/" t)))))
+      (split-window-vertically (- height))
+      (other-window 1)
+      (eshell "new")
+      (rename-buffer (concat "*eshell: " name "*"))))
+
+  (global-set-key (kbd "C-!") 'eshell-here)
+
+  (defun eshell/x ()
+    (insert "exit")
+    (eshell-send-input)
+    (delete-window))
+#+END_SRC
+Wrong type argument: integer-or-marker-p, nil
+
+** rainbow delimeters
+#+BEGIN_SRC emacs-lisp :tangle yes
+(add-hook 'prog-mode-hook 'rainbow-delimiters-mode)
+#+END_SRC
+
+** crux key shortcut combos
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (global-set-key (kbd "C-x 4 t") #'crux-transpose-windows)
+  (global-set-key (kbd "C-c k") #'crux-kill-other-buffers)
+#+END_SRC
+
+** open my config file 
+#+BEGIN_SRC emacs-lisp :tangle no
+(find-file "~/.emacs.d/dm-init.org")
+#+END_SRC
+
+** counsel load theme C-x t
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (bind-key "C-x t" 'counsel-load-theme)
+#+END_SRC
+
+** auto revert, see the recent file version 
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(global-auto-revert-mode 1)
+#+END_SRC
+
+** killall Finder, killall Dock
+#+BEGIN_SRC shell :tangle no
+open "Lucida Grande"
+killall Finder
+killall Dock
+#+END_SRC
+
+** Getting back to previous places
+
+Handy way of getting back to previous places.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(bind-key "C-x p" 'pop-to-mark-command)
+(setq set-mark-command-repeat-pop t)
+#+END_SRC
+
+** buffer list, ace-jump-buffer
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package ace-jump-buffer
+    :bind ("C-x C-x" . ace-jump-buffer)
+          ("C-x C-z" . ace-jump-buffer-in-one-window) 
+    :defer t)
+#+END_SRC
+
+** Add custom packages to load path
+
+example, not loading automatically...
+
+By default Emacs only includes files directly under
+=user-emacs-directory= (usually =~/.emacs.d/=), so we need to add any
+folders containing custom packages.
+
+I put my scripts under =~/dotfiles/lisp/= and symlink it with =ln -s
+~/dotfiles/lisp ~/.emacs.d/lisp=.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (add-to-list 'load-path "~/.emacs.d/lisp/")
+#+END_SRC
+
+** Toggle window split -- C-x 5
+
+Toggle vertical layout to horizontal and vice versa
+Complicated version, I use a simple one below...
+
+#+BEGIN_SRC emacs-lisp :tangle no
+(defun toggle-window-split ()
+  (interactive)
+  (if (= (count-windows) 2)
+      (let* ((this-win-buffer (window-buffer))
+	     (next-win-buffer (window-buffer (next-window)))
+	     (this-win-edges (window-edges (selected-window)))
+	     (next-win-edges (window-edges (next-window)))
+	     (this-win-2nd (not (and (<= (car this-win-edges)
+					 (car next-win-edges))
+				     (<= (cadr this-win-edges)
+					 (cadr next-win-edges)))))
+	     (splitter
+	      (if (= (car this-win-edges)
+		     (car (window-edges (next-window))))
+		  'split-window-horizontally
+		'split-window-vertically)))
+	(delete-other-windows)
+	(let ((first-win (selected-window)))
+	  (funcall splitter)
+	  (if this-win-2nd (other-window 1))
+	  (set-window-buffer (selected-window) this-win-buffer)
+	  (set-window-buffer (next-window) next-win-buffer)
+	  (select-window first-win)
+	  (if this-win-2nd (other-window 1))))))
+
+(define-key ctl-x-4-map "t" 'toggle-window-split)
+#+END_SRC
+
+... this one:
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-toggle-vert-horiz ()
+    "Dva frames pod sebou přepne vedle sebe
+  a obráceně."
+    (interactive)
+    (unless (= (length (window-list)) 2) (error "Umím jen dva frames, sorry..."))
+    (let ((split-vertically-p (window-combined-p)))
+      (delete-window)                    ; close current window
+      (if split-vertically-p
+          (split-window-horizontally)
+        (split-window-vertically))       ; the other window is in both frames
+      (switch-to-buffer nil)))           ; restore orig window in this frame
+
+  (global-set-key (kbd "C-x 5") 'dm-toggle-vert-horiz)
+#+END_SRC
+
+** call dm-all
+#+BEGIN_SRC emacs-lisp :tangle yes
+(dm-all)
+#+END_SRC
+** TODOs -- show active todos in current file -- C-x .
+#+BEGIN_SRC emacs-lisp :tangle yes
+(global-set-key (kbd "C-x .") #'org-show-todo-tree)
+#+END_SRC
+
+** switch between day and night -- dm-day, dm-night
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (defun dm-day()
+    (interactive)
+    (dm-a)
+      (disable-theme 'gruvbox)
+      (load-theme 'leuven t)
+      (sml/setup)
+      (sml/apply-theme 'light)
+      (dm-set-fringe-background))
+
+  (defun dm-night()
+    (interactive)
+    (dm-a)
+    (disable-theme 'leuven)
+    (load-theme 'misterioso t)
+    (sml/setup)
+    (sml/apply-theme 'dark)
+    (dm-set-fringe-background))
+
+#+END_SRC
+** change date format to "<2018-08-29 Wed>"
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq-default org-display-custom-times t)
+  (setq org-time-stamp-custom-formats '("<%e %b, %a>"))
+#+END_SRC
+** org-journal
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package org-journal
+    :defer t)
+#+END_SRC
+** org-show presentation
+#+BEGIN_SRC emacs-lisp :tangle yes
+(load "~/.emacs.d/elpa/org-show.el")
+#+END_SRC
+
+not working
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package org-show
+    :ensure t
+    :bind("C-n" . org-show-next-slide)
+         ("C-p" . org-show-previous-slide))
+#+END_SRC
+
+** How long did we take to load?
+#+BEGIN_SRC emacs-lisp :tangle yes
+(let ((elapsed (float-time (time-subtract (current-time)
+                                          emacs-start-time))))
+  (message "[STARTUP] Loading %s ... done (%.3fs)" load-file-name elapsed))
+#+END_SRC
+* manuals
+
+** how to use hooks
+This isn’t strictly related to Evil, but it’s good to know as you
+build up your Emacs configuration. Hooks are just functions called at
+certain points in time. Much like keymaps, each major and minor mode
+will have hook variables defined automatically for it. The hook for a
+mode is called immediately after that mode is activated, so it’s a
+great place to put any customization that relies on that mode being
+loaded.
+
+It’s very common to make adjustments to a mode’s keymap within the
+hook for that mode (because the keymap variable won’t be defined until
+the mode is loaded). This also makes your configuration more efficient
+because you only run code in the situations where it’s actually used.
+
+Emacs provides convenience functions for working with hooks, and the
+main one to know is =add-hook=. A hook is actually a list of functions
+that, when a mode is activated, are called in turn. Just like keymaps,
+hooks are automatically defined as the name of the mode with -hook
+appended.
+
+To set up the hjkl bindings in Occur mode only when Occur starts, you
+could write it like this:
+
+#+BEGIN_EXAMPLE
+  (add-hook 'occur-mode-hook
+            (lambda ()
+              (evil-add-hjkl-bindings occur-mode-map 'emacs
+                (kbd "/")       'evil-search-forward
+                (kbd "n")       'evil-search-next
+                (kbd "N")       'evil-search-previous
+                (kbd "C-d")     'evil-scroll-down
+                (kbd "C-u")     'evil-scroll-up
+                (kbd "C-w C-w") 'other-window)))
+#+END_EXAMPLE
+
+The =add-hook= function prepends the given function to the
+=occur-mode-hook= variable. In this case, I’m passing an anonymous
+function (or lambda) to add-hook because if I just put the
+(evil-add-hjkl-bindings ...) call there by itself, the result of
+calling that function would be passed to add-hook and it would
+complain about receiving the wrong variable type.
