@@ -2223,6 +2223,7 @@ more mode line example
 #+BEGIN_SRC emacs-lisp :tangle yes
   (use-package magit
     :bind ("C-x g" . magit-status)
+          ("C-x M-g" . magit-dispatch-popup)
     :defer t)
 #+END_SRC
 
